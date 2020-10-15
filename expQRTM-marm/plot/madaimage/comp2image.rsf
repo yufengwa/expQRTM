@@ -1,0 +1,11 @@
+2.1-git	sfbin2rsf	expQRTM-marm/plot/madaimage:	wyf@wyf-ubuntu	Wed Oct 14 12:22:05 2020
+
+	o1=0
+	d2=10
+	n2=663
+	o2=0
+	data_format="native_float"
+	esize=4
+	in="/home/wyf/data/datapath/expQRTM-marm/plot/madaimage/comp2image.rsf@"
+	d1=10
+	n1=234

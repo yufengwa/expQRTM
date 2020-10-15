@@ -1,0 +1,116 @@
+from rsf.proj import*
+from rsf.prog import RSFROOT
+from math import pi
+
+###################### display definition#######################
+def result (data,other):
+    Result(data,
+            '''
+            grey title="" label1=Depth unit1="ft" label2=Distance unit2="ft" scalebar=n pclip=99.5 
+            labelsz=8 titlesz=8 labelfat=2
+            color=i wherexlabel=t wheretitle=t titlesz=8 screenratio=2 screenwd=6 screenht=9
+            font=-1
+            %s
+            '''%other)
+
+
+def plot (data,other):
+    Plot (data,
+          '''
+            grey title="" label1=Depth unit1="ft" label2=Distance unit2="ft" scalebar=n pclip=99.5 
+            labelsz=8 titlesz=8 labelfat=2
+            color=i wherexlabel=t wheretitle=t titlesz=8 screenratio=2 screenratio=2 screenwd=6 screenht=9
+            font=-1
+            %s
+            '''%other)
+
+
+
+
+
+## plot record, velocity and Q model
+
+Flow('cwvp','../data/acc_vp.dat','bin2rsf n1=412 n2=269 d1=2.5 d2=2.5 o1=8190')
+Flow('cwQp','../data/acc_Qp.dat','bin2rsf n1=412 n2=269 d1=2.5 d2=2.5 o1=8190')
+
+
+result ('cwvp','bias=20000 clip=8000 scalebar=y labelsz=8 color=j screenwd=7')
+result ('cwQp','bias=80 clip=100 scalebar=y labelsz=8 color=j screenwd=7')
+
+
+## read iamges
+
+Flow('acoimage','../data/acofullns/Final_image_cor_type0.dat','bin2rsf n1=412 n2=269 d1=2.5 d2=2.5 o1=8190')
+Flow('attimage','../data/attfullns/Final_image_cor_type1.dat','bin2rsf n1=412 n2=269 d1=2.5 d2=2.5 o1=8190')
+Flow('compimage','../data/compfullns/Final_image_cor_type2.dat','bin2rsf n1=412 n2=269 d1=2.5 d2=2.5 o1=8190')
+Flow('staimage','../data/stafullns/Final_image_cor_type5.dat','bin2rsf n1=412 n2=269 d1=2.5 d2=2.5 o1=8190')
+
+
+plot ('acoimage','clip=5e9')
+plot ('attimage','clip=1e9')
+plot ('compimage','clip=5e15')
+plot ('staimage','clip=5e9')
+
+
+x1=0.43
+y1=0.65
+lx1=.15
+ly1=.15
+a1 =string.join(map(str,(x1,y1,x1,y1+ly1,x1+lx1,y1+ly1,x1+lx1,y1,x1,y1)))
+
+Flow ('line1.asc', None, 'echo %s n1=10 n2=1 data_format=ascii_float in=$TARGET'%a1)
+Plot ('line1', 'line1.asc', 'dd type=complex form=native|graph min1=0 max1=1 min2=0 max2=1  wantaxis=n plotfat=10 plotcol=1 wanttitle=n screenratio=2 screenwd=6 screenht=9 scalebar=n')
+
+
+x2=0.30
+y2=0.42
+lx2=.60
+ly2=.20
+a2 =string.join(map(str,(x2,y2,x2,y2+ly2,x2+lx2,y2+ly2,x2+lx2,y2,x2,y2)))
+
+Flow ('line2.asc', None, 'echo %s n1=10 n2=1 data_format=ascii_float in=$TARGET'%a2)
+Plot ('line2', 'line2.asc', 'dd type=complex form=native|graph min1=0 max1=1 min2=0 max2=1  wantaxis=n plotfat=10 plotcol=3 wanttitle=n screenratio=2 screenwd=6 screenht=9 scalebar=n')
+
+x3=0.23
+y3=0.20
+lx3=.30
+ly3=.12
+a3 =string.join(map(str,(x3,y3,x3,y3+ly3,x3+lx3,y3+ly3,x3+lx3,y3,x3,y3)))
+
+Flow ('line3.asc', None, 'echo %s n1=10 n2=1 data_format=ascii_float in=$TARGET'%a3)
+Plot ('line3', 'line3.asc', 'dd type=complex form=native|graph min1=0 max1=1 min2=0 max2=1  wantaxis=n plotfat=10 plotcol=2 wanttitle=n screenratio=2 screenwd=6 screenht=9 scalebar=n')
+
+Result ('cwaco','acoimage line1 line2 line3', 'Overlay')
+Result ('cwatt','attimage  line1 line2 line3', 'Overlay')
+Result ('cwcomp','compimage  line1 line2 line3', 'Overlay')
+Result ('cwsta','staimage  line1 line2 line3', 'Overlay')
+
+
+## zoomed view
+
+Flow('zacoimage0','acoimage','window min2=154.7 min1=8897 max2=365.4 max1=8998')
+Flow('zattimage0','attimage','window min2=154.7 min1=8897 max2=365.4 max1=8998')
+Flow('zcompimage0','compimage','window min2=154.7 min1=8897 max2=365.4 max1=8998')
+Flow('zstaimage0','staimage','window min2=154.7 min1=8897 max2=365.4 max1=8998')
+
+
+plot ('zacoimage0','color=i clip=2e9 screenwd=9 screenht=6')
+plot ('zattimage0','color=i clip=8e8 screenwd=9 screenht=6')
+plot ('zcompimage0','color=i clip=5e15 screenwd=9 screenht=6')
+plot ('zstaimage0','color=i clip=2e9 screenwd=9 screenht=6')
+Plot ('arrow1', None, 
+	'''
+	box x0=2.45 y0=2.55 label="A" xt=-0.5 yt=0.5 length=1
+	''')
+Plot ('arrow2', None, 
+	'''
+	box x0=4.4 y0=3.8 label="B" xt=-0.5 yt=0.5 length=1
+	''')
+
+Result ('zacoimage','zacoimage0 arrow1 arrow2','Overlay')
+Result ('zattimage','zattimage0 arrow1 arrow2','Overlay')
+Result ('zcompimage','zcompimage0 arrow1 arrow2','Overlay')
+Result ('zstaimage','zstaimage0 arrow1 arrow2','Overlay')
+
+End()
+
