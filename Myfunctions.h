@@ -1,3 +1,8 @@
+// This is the header file for QRTM code package. We define two struct variables in this header 
+// and put all function statement in here for both extern "C" functions in CUDAQRTM.cu and C 
+// functions in CQRTM.cpp.
+
+
 #include "cufft.h"
 
 extern "C"
@@ -8,6 +13,13 @@ struct Source
 {
 	int s_iz, s_ix, *r_iz, *r_ix, r_n;
 };
+
+
+
+//=======================================================
+//  Defining the struct variable which contains all 
+//	variables allocated in device.
+//=======================================================
 
 extern "C"
 struct MultiGPU
@@ -48,6 +60,11 @@ struct MultiGPU
 	float *d_image_cor, *d_image_nor;
 };
 
+
+
+//=======================================================
+//  Statements for all C function in QRTM_*.cpp 
+//=======================================================
 void ricker_wave
 (
 	float *ricker, int nt, float f0, float t0, float dt, int flag
@@ -80,6 +97,10 @@ void Laplace_FD_filtering
 	float *image, int ntx, int ntz, float dx, float dz
 );
 
+
+//=======================================================
+//  Statements for all extern "C" function in CUDAQRTM.cu
+//=======================================================
 extern "C"
 void cuda_visco_PSM_2d_forward
 (
@@ -131,3 +152,6 @@ void cuda_Host_initialization
 	float dx, float dz, int L, int rnmax, int N_cp,
 	struct MultiGPU plan[], int GPU_N
 );
+
+
+

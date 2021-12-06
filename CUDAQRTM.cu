@@ -1,3 +1,19 @@
+// This is CUDA file for kernel functions and extern "C" functions definition
+// There two major extern "C" functions in this file:
+// void cuda_visco_PSM_2d_forward(...) for viscoacoustic forward modeling;
+// void cuda_visco_PSM_2d_backward(...) for wavefield reconstruction, backpropagation and imaging.
+// These two extern "C" function calls a set of CUDA kernel functions.
+// Since we use PSM for numerical simulation, the discretization of forward and 
+// backward wave equation can be split into two parts via CUFFT calls:
+//
+//		cufftExecC2C(...,CUFFT_FORWARD);
+//  	cuda_kernel_visco_PSM_2d_forward_k_space<<<...>>>;
+//		cufftExecC2C(...,CUFFT_BACKWARD);
+//		cuda_kernel_visco_PSM_2d_forward_x_space<<<...>>>;
+//
+// For more details please refer to Eq(1) for forward and Eq(2) for backward propagation in our paper.
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -10,9 +26,10 @@
 using namespace std;
 
 
-//==========================================================
-//  This subroutine is used for Error Checking during Memory Malloc on device
-//  =========================================================
+//=========================================================
+//  This subroutine is used for Error Checking 
+//	during Memory Malloc on device
+//=========================================================
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
 {
@@ -23,21 +40,24 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
    }
 }
 
-
-// define multistream to prepare for streaming execution
+//=========================================================
+//  define multistream to prepare for streaming execution
+//=========================================================
 struct Multistream
 {
 	cudaStream_t stream,stream_back;
 };
 
 
-//==========================================================
-//  This subroutine is used for initializating wavefield variables
-//  =========================================================
+//=========================================================
+//  This subroutine is used for initializating wavefield 
+//	variables in space domain and wavenumber domain
+//=========================================================
 __global__ void cuda_kernel_initialization
 (
 	int ntx, int ntz, cufftComplex *u0, cufftComplex *u1, cufftComplex *u2, 
-	cufftComplex *uk0, cufftComplex *uk, cufftComplex *Lap, cufftComplex *amp_Lap, cufftComplex *pha_Lap, cufftComplex *sta_Lap
+	cufftComplex *uk0, cufftComplex *uk, cufftComplex *Lap, cufftComplex *amp_Lap, 
+	cufftComplex *pha_Lap, cufftComplex *sta_Lap
 )
 {
 	int bx=blockIdx.x;
@@ -63,9 +83,9 @@ __global__ void cuda_kernel_initialization
 }
 
 
-//==========================================================
+//=========================================================
 //  This subroutine is used for updating wavefield variables
-//  =========================================================
+//=========================================================
 __global__ void cuda_kernel_update
 (
 	int ntx, int ntz, cufftComplex *u0, cufftComplex *u1, cufftComplex *u2
@@ -89,9 +109,9 @@ __global__ void cuda_kernel_update
 }
 
 
-//==========================================================
+//=============================================================
 //  This subroutine is used for initializating image variables
-//  =========================================================
+//=============================================================
 __global__ void cuda_kernel_initialization_images
 (
 	int ntx, int ntz, float *image_cor, float *image_nor, float *image_sources, float *image_receivers
@@ -115,9 +135,10 @@ __global__ void cuda_kernel_initialization_images
 }
 
 
-//==========================================================
-//  This subroutine is used for defining k
-// =========================================================
+//=========================================================
+//  This subroutine is used for defining wavenumber k 
+//		(kx=2*PI*ix/(ntx*dx))
+//=========================================================
 __global__ void cuda_kernel_k_define
 (
 	int ntx, int ntz, float dx, float dz, float *kx, float *kz
@@ -154,9 +175,10 @@ __global__ void cuda_kernel_k_define
 }
 
 
-//==========================================================
-//  This subroutine is used for calculating forward wavefileds in k-space
-//  ========================================================
+//=========================================================
+//  This subroutine is used for calculating forward 
+//		wavefileds in k-space when using PSM
+// ========================================================
 __global__ void cuda_kernel_visco_PSM_2d_forward_k_space
 (
 	float beta1, float beta2,
@@ -201,8 +223,9 @@ __global__ void cuda_kernel_visco_PSM_2d_forward_k_space
 
 
 //==========================================================
-//  This subroutine is used for calculating forward wavefileds in x-space
-//  ========================================================
+//  This subroutine is used for calculating forward 
+//		wavefileds in x-space when using PSM
+//========================================================
 __global__ void cuda_kernel_visco_PSM_2d_forward_x_space
 (
 	float beta1, float beta2,
@@ -243,7 +266,7 @@ __global__ void cuda_kernel_visco_PSM_2d_forward_x_space
 				Lap[ip].x
 				+beta1*(eta*pha_Lap[ip].x-Lap[ip].x)
 				+beta2*tau*amp_Lap[ip].x
-				+tau*sigmafactor*sta_Lap[ip].x //-2*sigmafactor/powf(vp[ip]*cos(Gamma[ip]*PI/2),2)*sta_Lap[ip].x
+				+tau*sigmafactor*sta_Lap[ip].x 
 			)
 			+2*u1[ip].x-u0[ip].x;
 	}
@@ -290,9 +313,9 @@ __global__ void cuda_kernel_visco_PSM_2d_forward_x_space
 }
 
 
-//==========================================================
+//========================================================
 //  This subroutine is used for writing checkpoints
-//  ========================================================
+//========================================================
 __global__ void cuda_kernel_checkpoints_Out
 (
 	int it, int nt, int ntx, int ntz, int nx, int nz, int L, float dx, float dz, float dt, 
@@ -325,9 +348,10 @@ __global__ void cuda_kernel_checkpoints_Out
 }
 
 
-//==========================================================
-//  This two subroutines are used for initializing Final two wavefileds
-//  =========================================================
+//=========================================================
+//  This two subroutines are used for initializing 
+//		Final two wavefileds for reconstruction
+//=========================================================
 __global__ void cuda_kernel_initialization_Finals
 (
 	int ntx, int ntz, cufftComplex *u0, cufftComplex *u1, float *u2_final0, float *u2_final1
@@ -348,9 +372,10 @@ __global__ void cuda_kernel_initialization_Finals
 }
 
 
-/*==========================================================
-  This subroutine is used for calculating reconstructed wavefileds in k-space
-  ===========================================================*/
+//==========================================================
+//  This subroutine is used for calculating reconstructed 
+//		wavefileds in k-space when using PSM
+//==========================================================
 
 __global__ void cuda_kernel_visco_PSM_2d_reconstruction_k_space
 (
@@ -396,9 +421,10 @@ __global__ void cuda_kernel_visco_PSM_2d_reconstruction_k_space
 }
 
 
-//==========================================================
-//  This subroutine is used for calculating reconstructed wavefileds in x-space
-//  =========================================================
+//=========================================================
+//  This subroutine is used for calculating reconstructed 
+//		wavefileds in x-space when using PSM
+//=========================================================
 __global__ void cuda_kernel_visco_PSM_2d_reconstruction_x_space
 (
 	float beta1, float beta2,
@@ -462,9 +488,9 @@ __global__ void cuda_kernel_visco_PSM_2d_reconstruction_x_space
 }
 
 
-//==========================================================
+//=========================================================
 //  This subroutine is used for reading checkpoints
-//  =========================================================
+//=========================================================
 __global__ void cuda_kernel_checkpoints_In
 (
 	int it, int nt, int ntx, int ntz, int nx, int nz, int L, float dx, float dz, float dt, 
@@ -496,9 +522,10 @@ __global__ void cuda_kernel_checkpoints_In
 }
 
 
-//==========================================================
-//  This subroutine is used for calculating backward wavefileds in k-space
-//  =========================================================
+//=========================================================
+//  This subroutine is used for calculating backward 
+//		wavefileds in k-space when using PSM
+//=========================================================
 __global__ void cuda_kernel_visco_PSM_2d_backward_k_space
 (
 	float beta1, float beta2,
@@ -543,9 +570,10 @@ __global__ void cuda_kernel_visco_PSM_2d_backward_k_space
 }
 
 
-//==========================================================
-//  This subroutine is used for calculating backward wavefileds in x-space
-//  ========================================================
+//========================================================
+//  This subroutine is used for calculating backward 
+//		wavefileds in x-space when using PSM
+//========================================================
 __global__ void cuda_kernel_visco_PSM_2d_backward_x_space
 (
 	int Geometry, float beta1, float beta2,
@@ -587,8 +615,6 @@ __global__ void cuda_kernel_visco_PSM_2d_backward_x_space
 			+2*u1[ip].x-u0[ip].x;	
 	}
 
-
-
 	// add seismogram as source for surface geometry
 	if(Geometry==0)
 	{
@@ -615,9 +641,9 @@ __global__ void cuda_kernel_visco_PSM_2d_backward_x_space
 }
 
 
-//==========================================================
-//  This subroutine is used for imaging
-// ========================================================
+//========================================================
+//  This subroutine is used for cross-correlation imaging
+//========================================================
 __global__ void cuda_kernel_image
 (
 	int ntx, int ntz, int L,
@@ -642,9 +668,10 @@ __global__ void cuda_kernel_image
 	//__syncthreads();
 }
 
-//==========================================================
-//  This subroutine is used for absorbing boundary condition
-//  ========================================================
+//========================================================
+//  This subroutine is used for MTF 
+//	  absorbing boundary condition
+//========================================================
 __global__ void cuda_kernel_MTF_2nd
 (
 	int L, int ntx, int ntz, float dx, float dz, float dt, 
@@ -785,14 +812,19 @@ __global__ void cuda_kernel_MTF_2nd
 
 
 
-
-
-
-
-//==========================================================
-//  This subroutine are used for forward modeling
+//================================================================
+//  This subroutine are used for viscoacoustic forward modeling
+//	with decoupled fractional laplacians wave equation which is 
+//  calculated by PSM. The CUFFT calls split the discretation
+//	into two parts in k-space and x-space calls:
+//
+//		cufftExecC2C(...,CUFFT_FORWARD);
+//  	cuda_kernel_visco_PSM_2d_forward_k_space<<<...>>>;
+//		cufftExecC2C(...,CUFFT_BACKWARD);
+//		cuda_kernel_visco_PSM_2d_forward_x_space<<<...>>>;
+//
 //	For more details please refer to Eq(1) in our paper
-//  =========================================================
+//===============================================================
 extern "C"
 void cuda_visco_PSM_2d_forward
 (
@@ -849,6 +881,8 @@ void cuda_visco_PSM_2d_forward
 			plan[i].d_Lap, plan[i].d_amp_Lap, plan[i].d_pha_Lap, plan[i].d_sta_Lap);
 		cuda_kernel_k_define<<<dimGrid,dimBlock,0,plans[i].stream>>>
 			(ntx, ntz, dx, dz, plan[i].d_kx, plan[i].d_kz);
+		if (cudaSuccess != cudaGetLastError())
+    		printf( "Error!\n" );
 	}
 
 	// forward time iteration
@@ -933,6 +967,9 @@ void cuda_visco_PSM_2d_forward
 			cuda_kernel_update<<<dimGrid,dimBlock,0,plans[i].stream>>>
 				(ntx, ntz, plan[i].d_u0, plan[i].d_u1, plan[i].d_u2);
 
+			if (cudaSuccess != cudaGetLastError())
+				printf( "Error!\n" );
+
 			if(myid==0&&it%100==0)
 			{
 				printf("shot %d forward %d has finished!\n", is+i+1, it);
@@ -980,12 +1017,27 @@ void cuda_visco_PSM_2d_forward
 	free(u2_real);
 }
 
-
-
-//==========================================================
-//  This subroutine are used for backward modeling
-//	For more details please refer to Eq(5) in our paper
-//  =========================================================
+//================================================================
+//  This subroutine are used for wavefield reconstruction and 
+//	backward propagation and cross-correlation imaging
+//	with decoupled fractional laplacians wave equation which is 
+//  calculated by PSM. The CUFFT calls split the discretation
+//	into two parts in k-space and x-space calls:
+//
+//		cufftExecC2C(...,CUFFT_FORWARD);
+//  	cuda_kernel_visco_PSM_2d_reconstruction_k_space<<<...>>>;
+//		cufftExecC2C(...,CUFFT_BACKWARD);
+//		cuda_kernel_visco_PSM_2d_reconstruction_x_space<<<...>>>;
+//
+//		cufftExecC2C(...,CUFFT_FORWARD);
+//  	cuda_kernel_visco_PSM_2d_backward_k_space<<<...>>>;
+//		cufftExecC2C(...,CUFFT_BACKWARD);
+//		cuda_kernel_visco_PSM_2d_backward_x_space<<<...>>>;
+//
+//		cuda_kernel_image<<<...>>>
+//
+//	For more details please refer to Eq(2) in our paper
+//===============================================================
 extern "C"
 void cuda_visco_PSM_2d_backward
 (
@@ -1040,7 +1092,10 @@ void cuda_visco_PSM_2d_backward
 
 		// initialization image variables for imaging
 		cuda_kernel_initialization_images<<<dimGrid,dimBlock,0,plans[i].stream>>>
-			(ntx, ntz, plan[i].d_image_cor, plan[i].d_image_nor, plan[i].d_image_sources, plan[i].d_image_receivers);			
+			(ntx, ntz, plan[i].d_image_cor, plan[i].d_image_nor, plan[i].d_image_sources, plan[i].d_image_receivers);	
+
+		if (cudaSuccess != cudaGetLastError())
+    		printf( "Error!\n" );		
 	}
 
 	// copy the vectors from the host to the device
@@ -1226,6 +1281,9 @@ void cuda_visco_PSM_2d_backward
 			cuda_kernel_update<<<dimGrid,dimBlock,0,plans[i].stream>>>
 				(ntx, ntz, plan[i].d_u0, plan[i].d_u1, plan[i].d_u2);
 
+			if (cudaSuccess != cudaGetLastError())
+				printf( "Error!\n" );
+
 			if(myid==0&&it%100==0)
 			{
 				printf("shot %d reconstruction and backward %d has finished!\n", is+i+1, it);
@@ -1258,9 +1316,14 @@ void cuda_visco_PSM_2d_backward
 }
 
 
-//==========================================================
-//  This two subroutines are used for Laplace filteing
-//  ========================================================
+
+
+
+
+
+//========================================================
+//  This subroutine is used for Laplace filteing
+//========================================================
 extern "C"
 void Laplace_filtering
 (
@@ -1360,9 +1423,9 @@ void Laplace_filtering
 }
 
 
-//=========================================================
-//  Allocate the memory for variables in device
-//  =======================================================
+//=======================================================
+//  Allocate the memory for variables in device with error checking
+//=======================================================
 extern "C"
 void cuda_Device_malloc
 (
@@ -1451,9 +1514,9 @@ void cuda_Device_malloc
 }
 
 
-//=========================================================
+//=======================================================
 //  Free the memory for variables in device
-//  =======================================================
+//=======================================================
 extern "C"
 void cuda_Device_free
 (
@@ -1542,9 +1605,9 @@ void cuda_Device_free
 }
 
 
-//=========================================================
+//=======================================================
 //  Initializating the memory for variables in device
-//  =======================================================
+//=======================================================
 extern "C"
 void cuda_Host_initialization
 (

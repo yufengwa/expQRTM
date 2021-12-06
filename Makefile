@@ -1,10 +1,9 @@
 #! /bin/sh
 
-# compiler
 
 # set CUDA and MPI environment path 
-CUDA_HOME=/usr/local/cuda-10.2
-MPI_HOME=/home/wyf/openmpi4
+CUDA_HOME=/usr/local/cuda-10.2	# change this with your own configuration
+MPI_HOME=/home/wyf/openmpi4		# change this with your own configuration
 
 INC=-I$(CUDA_HOME)/include -I$(MPI_HOME)/include 
 LIB=-L$(CUDA_HOME)/lib64 -L$(MPI_HOME)/lib
@@ -40,7 +39,7 @@ all:
 
 
 # CUDA and C++ source codes for Marmousi model
-CFILES_marm = QRTM_marmousi.cpp
+CFILES_marm = QRTM_marmousi.cpp CQRTM.cpp
 CUFILES_marm = CUDAQRTM.cu
 OBJECTS_marm = QRTM_marmousi.o CUDAQRTM.o 
 EXECNAME_marm = marmousi.out
@@ -56,7 +55,7 @@ marmousi:
 
 
 # CUDA and C++ source codes for Crosswell model
-CFILES_cw = QRTM_crosswell.cpp
+CFILES_cw = QRTM_crosswell.cpp CQRTM.cpp
 CUFILES_cw = CUDAQRTM.cu
 OBJECTS_cw = QRTM_crosswell.o CUDAQRTM.o 
 EXECNAME_cw = crosswell.out
