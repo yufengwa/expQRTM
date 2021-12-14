@@ -2,8 +2,8 @@
 
 
 # set CUDA and MPI environment path 
-CUDA_HOME=/usr/local/cuda-10.2	# change this with your own configuration
-MPI_HOME=/home/wyf/openmpi4		# change this with your own configuration
+CUDA_HOME=/usr/local/cuda-10.2
+MPI_HOME=/home/wyf/openmpi4
 
 INC=-I$(CUDA_HOME)/include -I$(MPI_HOME)/include 
 LIB=-L$(CUDA_HOME)/lib64 -L$(MPI_HOME)/lib
